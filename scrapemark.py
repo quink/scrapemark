@@ -6,9 +6,10 @@ import cgi
 import cookielib
 from htmlentitydefs import name2codepoint
 
-user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.8.1.3) Gecko/20070309 Firefox/2.0.0.3'
+user_agent = 
 
-def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False):
+def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False,
+    user_agent='Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.8.1.3) Gecko/20070309 Firefox/2.0.0.3'):
     if type(pattern) == str:
         pattern = compile(pattern)
     return pattern.scrape(html, url, get, post, headers, cookie_jar, verbose)
