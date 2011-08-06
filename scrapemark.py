@@ -6,18 +6,17 @@ import cgi
 import cookielib
 from htmlentitydefs import name2codepoint
 
-verbose = True
 user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.8.1.3) Gecko/20070309 Firefox/2.0.0.3'
 
-def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None):
+def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False):
 	if type(pattern) == str:
 		pattern = compile(pattern)
-	return pattern.scrape(html, url, get, post, headers, cookie_jar)
+	return pattern.scrape(html, url, get, post, headers, cookie_jar, verbose)
 	
 def compile(pattern):
 	return _Pattern(_compile(pattern, True))
 	
-def fetch_html(url, get=None, post=None, headers=None, cookie_jar=None):
+def fetch_html(url, get=None, post=None, headers=None, cookie_jar=None, verbose=False):
 	if get:
 		if type(get) == str:
 			get = cgi.parse_qs(get)
