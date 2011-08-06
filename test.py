@@ -39,6 +39,10 @@ class TestScrape(unittest.TestCase):
         data = ['{{ foo }}', '&mdash;', {'foo':u'\u2014'}]
         self.assertScrape(*data)
 
+    def test_entity2(self):
+        data = ['<title>{{title}}</title>','<title>YouTube - &#x202a;Most viewed videos&#x202c;&lrm</title>', {'title': u'YouTube - \u202aMost viewed videos\u202c&lrm'}]
+        self.assertScrape(*data)
+
     def test_url(self):
         data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081', 'verbose' : True}]
         self.assertScrape(*data)
