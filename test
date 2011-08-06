@@ -1,1 +1,1 @@
-nosetests --with-coverage --cover-html
+nosetests --tests test.py,test_doc.py --with-coverage --cover-html
