@@ -20,7 +20,7 @@ def testpost():
 
 @route('/testredirect')
 def testredirect():
-    return 'bar'
+    return '<em>bar</em>'
 
 if __name__=='__main__':
     run(host='localhost', port=8081, reloader=True)

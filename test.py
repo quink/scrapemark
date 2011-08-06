@@ -63,5 +63,13 @@ class TestScrape(unittest.TestCase):
         data = ['{@ {{ foo }} @}', 'http://localhost:8081/testredirect', {'foo' : 'bar'}]
         self.assertScrape(*data)
 
+    def test_redirectandfilter(self):
+        data = ['{@ {{ foo|html }} @}', 'http://localhost:8081/testredirect', {'foo' : '<em>bar</em>'}]
+        self.assertScrape(*data)
+
+    def test_capturenothing(self):
+        data = ['', '', {}]
+        self.assertScrape(*data)
+
 if __name__ == '__main__':
     unittest.main()
