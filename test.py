@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import unittest
 from scrapemark import scrape
 
@@ -35,6 +37,18 @@ class TestScrape(unittest.TestCase):
 
     def test_entity(self):
         data = ['{{ foo }}', '&mdash;', {'foo':u'\u2014'}]
+        self.assertScrape(*data)
+
+    def test_url(self):
+        data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081'}]
+        self.assertScrape(*data)
+
+    def test_get(self):
+        data = ['{{ foo }}', None, {'foo' : 'passed'}, {'url':'http://localhost:8081/testget/', 'get' : {'test' : 'yay'}}]
+        self.assertScrape(*data)
+
+    def test_post(self):
+        data = ['{{ foo }}', None, {'foo' : 'passed'}, {'url':'http://localhost:8081/testpost/', 'post' : {'test' : 'yay'}}]
         self.assertScrape(*data)
 
 if __name__ == '__main__':
