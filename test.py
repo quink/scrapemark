@@ -18,7 +18,7 @@ class TestScrape(unittest.TestCase):
         return string + "a"
     
     def test_adda(self):
-        data = ['{{ foo|adda }}', '<a>hello</a>', {'foo':'<a>hello</a>a'}, {'processors':{'adda':self.adda}}]
+        data = ['{{ foo|adda }}', '<a>hello</a>', {'foo':'helloa'}, {'processors':{'adda':self.adda}, 'verbose':True}]
         self.assertScrape(*data)
 
 if __name__ == '__main__':

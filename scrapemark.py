@@ -61,7 +61,7 @@ class _Pattern:
         if html == None:
             html = fetch_html(url, get, post, headers, cookie_jar)
         captures = {}
-        if _match(self._nodes, _remove_comments(html), 0, captures, url, cookie_jar) == -1:
+        if _match(self._nodes, _remove_comments(html), 0, captures, url, cookie_jar, verbose, processors) == -1:
             return None
         if len(captures) == 1 and '' in captures:
             return captures['']
@@ -253,7 +253,10 @@ def _make_text_re(text, re_compile):
 # functions for running pattern nodes on html
 # ---------------------------------------------------------------
 
-def _match(nodes, html, i, captures, base_url, cookie_jar): # returns substring index after match, -1 if no match
+def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, processors={}): # returns substring index after match, -1 if no match
+    if verbose:
+        print "Current nodes: ", nodes
+        print "Running with processors: ", processors
     anchor_i = i
     special = []
     for node in nodes:
@@ -263,7 +266,7 @@ def _match(nodes, html, i, captures, base_url, cookie_jar): # returns substring 
             if not m:
                 return -1
             # run previous special nodes
-            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar):
+            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors):
                 return -1
             special = []
             i = anchor_i = m.end()
@@ -277,7 +280,7 @@ def _match(nodes, html, i, captures, base_url, cookie_jar): # returns substring 
                         return -1
                     i = m.end()
                     attrs = _parse_attrs(m.group(1) or '')
-                    attrs_matched = _match_attrs(node[3], attrs, captures, base_url, cookie_jar)
+                    attrs_matched = _match_attrs(node[3], attrs, captures, base_url, cookie_jar, processors)
                     if attrs_matched == -1:
                         return -1
                     if attrs_matched:
@@ -291,17 +294,17 @@ def _match(nodes, html, i, captures, base_url, cookie_jar): # returns substring 
                         _merge_captures(captures, nested_captures)
                         break
             # run previous special nodes
-            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar):
+            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors):
                 return -1
             special = []
             anchor_i = i
         else:
             special.append(node)
-    if not _run_special_nodes(special, html[i:], captures, base_url, cookie_jar):
+    if not _run_special_nodes(special, html[i:], captures, base_url, cookie_jar, processors):
         return -1
     return i
         
-def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar): # returns True/False, -1 if failed _run_special_node
+def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar, processors={}): # returns True/False, -1 if failed _run_special_node
     for name, attr_node in attr_nodes.items():
         if name not in attrs:
             return False
@@ -311,35 +314,35 @@ def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar): # returns T
                 return False
             # run regex captures over parallel list of special nodes
             for i, special_node in enumerate(attr_node[1]):
-                if not _run_special_node(special_node, m.group(i+1), captures, base_url, cookie_jar):
+                if not _run_special_node(special_node, m.group(i+1), captures, base_url, cookie_jar, processors):
                     return -1
     return True
 
-def _run_special_nodes(nodes, s, captures, base_url, cookie_jar): # returns True/False
+def _run_special_nodes(nodes, s, captures, base_url, cookie_jar, processors={}): # returns True/False
     for node in nodes:
-        if not _run_special_node(node, s, captures, base_url, cookie_jar):
+        if not _run_special_node(node, s, captures, base_url, cookie_jar, processors):
             return False
     return True
         
-def _run_special_node(node, s, captures, base_url, cookie_jar): # returns True/False
+def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}): # returns True/False
     if node[0] == _CAPTURE:
-        s = _apply_filters(s, node[2], base_url)
+        s = _apply_filters(s, node[2], base_url, processors)
         _set_capture(captures, node[1], s)
     elif node[0] == _SCAN:
         i = 0
         while True:
             nested_captures = {}
-            i = _match(node[1], s, i, nested_captures, base_url, cookie_jar)
+            i = _match(node[1], s, i, nested_captures, base_url, cookie_jar, processors)
             if i == -1:
                 break
             else:
                 _merge_captures(captures, nested_captures)
         # scan always ends with an usuccessful match, so fill in captures that weren't set
-        _fill_captures(node[1], captures)
+        _fill_captures(node[1], captures, processors)
     elif node[0] == _GOTO:
-        new_url = _apply_filters(s, node[1] + ['abs'], base_url)
+        new_url = _apply_filters(s, node[1] + ['abs'], base_url, processors)
         new_html = fetch_html(new_url, cookie_jar=cookie_jar)
-        if _match(node[2], new_html, 0, captures, new_url, cookie_jar) == -1:
+        if _match(node[2], new_html, 0, captures, new_url, cookie_jar, processors) == -1:
             return False
     return True
     
@@ -393,20 +396,20 @@ def _merge_captures(master, slave):
                     else:
                         master[name].append(e)
         
-def _fill_captures(nodes, captures):
+def _fill_captures(nodes, captures, processors={}):
     for node in nodes:
         if node[0] == _TAG:
-            _fill_captures(node[4], captures)
+            _fill_captures(node[4], captures, processors)
             for attr in node[3].values():
-                _fill_captures(attr[1], captures)
+                _fill_captures(attr[1], captures, processors)
         elif node[0] == _CAPTURE:
-            _set_capture(captures, node[1], _apply_filters(None, node[2], None), False)
+            _set_capture(captures, node[1], _apply_filters(None, node[2], None, processors), False)
         elif node[0] == _SCAN:
-            _fill_captures(node[1], captures)
+            _fill_captures(node[1], captures, processors)
         elif node[0] == _GOTO:
-            _fill_captures(node[2], captures)
+            _fill_captures(node[2], captures, processors)
         
-def _apply_filters(s, filters, base_url):
+def _apply_filters(s, filters, base_url, processors={}):
     if 'html' not in filters and issubclass(type(s), basestring):
         s = _remove_html(s)
     for f in filters:
@@ -428,6 +431,8 @@ def _apply_filters(s, filters, base_url):
                 s = 0.0
         elif f == 'bool':
             s = bool(s)
+        elif f != 'html':
+            s = processors[f](s)
     return s
     
     
