@@ -6,18 +6,19 @@ import cgi
 import cookielib
 from htmlentitydefs import name2codepoint
 
-user_agent = 
+user_agent='Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.8.1.3) Gecko/20070309 Firefox/2.0.0.3'
 
-def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False,
-    user_agent='Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.8.1.3) Gecko/20070309 Firefox/2.0.0.3'):
+def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False, \
+    user_agent=user_agent):
     if type(pattern) == str:
         pattern = compile(pattern)
-    return pattern.scrape(html, url, get, post, headers, cookie_jar, verbose)
+    return pattern.scrape(html, url, get, post, headers, cookie_jar, verbose, user_agent)
     
 def compile(pattern):
     return _Pattern(_compile(pattern, True))
     
-def fetch_html(url, get=None, post=None, headers=None, cookie_jar=None, verbose=False):
+def fetch_html(url, get=None, post=None, headers=None, cookie_jar=None, verbose=False, \
+    user_agent=user_agent):
     if get:
         if type(get) == str:
             get = cgi.parse_qs(get)
@@ -53,7 +54,8 @@ class _Pattern:
     def __init__(self, nodes):
         self._nodes = nodes
     
-    def scrape(self, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None):
+    def scrape(self, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False, \
+        user_agent=user_agent):
         if cookie_jar == None:
             cookie_jar = cookielib.CookieJar()
         if html == None:
