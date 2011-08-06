@@ -40,7 +40,7 @@ class TestScrape(unittest.TestCase):
         self.assertScrape(*data)
 
     def test_url(self):
-        data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081'}]
+        data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081', 'verbose' : True}]
         self.assertScrape(*data)
 
     def test_get(self):
@@ -49,6 +49,18 @@ class TestScrape(unittest.TestCase):
 
     def test_post(self):
         data = ['{{ foo }}', None, {'foo' : 'passed'}, {'url':'http://localhost:8081/testpost/', 'post' : {'test' : 'yay'}}]
+        self.assertScrape(*data)
+
+    def test_int(self):
+        data = ['{{ foo|int }}', '1', {'foo' : 1}]
+        self.assertScrape(*data)
+
+    def test_intFail(self):
+        data = ['{{ foo|int }}', 'a', {'foo' : 0}]
+        self.assertScrape(*data)
+
+    def test_redirect(self):
+        data = ['{@ {{ foo }} @}', 'http://localhost:8081/testredirect', {'foo' : 'bar'}]
         self.assertScrape(*data)
 
 if __name__ == '__main__':

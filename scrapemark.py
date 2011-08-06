@@ -61,7 +61,7 @@ class _Pattern:
         if cookie_jar == None:
             cookie_jar = cookielib.CookieJar()
         if html == None:
-            html = fetch_html(url, get, post, headers, cookie_jar)
+            html = fetch_html(url, get, post, headers, cookie_jar, verbose)
         captures = {}
         if _match(self._nodes, _remove_comments(html), 0, captures, url, cookie_jar, verbose, processors) == -1:
             return None

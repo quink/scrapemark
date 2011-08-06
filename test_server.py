@@ -18,5 +18,9 @@ def testpost():
     if test=='yay': return '<em>passed</em>'
     else: return '<em>failed</em>'
 
+@route('/testredirect')
+def testredirect():
+    return 'bar'
+
 if __name__=='__main__':
     run(host='localhost', port=8081, reloader=True)
