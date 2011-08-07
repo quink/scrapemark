@@ -254,7 +254,9 @@ def _make_text_re(text, re_compile):
 
 def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, processors={}): # returns substring index after match, -1 if no match
     if verbose:
-        print "Current nodes: ", nodes
+        import pprint
+        print "Nodes are: ",
+        pprint.pprint(nodes)
         print "Running with processors: ", processors
     anchor_i = i
     special = []

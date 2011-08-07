@@ -99,7 +99,8 @@ class TestDoc(unittest.TestCase):
         </table>
         """, str, {'days': [{'number': 1, 'points': [5.6, 24.5]}, \
               {'number': 2, 'points': [1.1, 12.8]}, \
-              {'number': 3, 'points': [2.4, 5.67]}]}]
+              {'number': 3, 'points': [2.4, 5.67]}]},
+              {'verbose' : True}]
         self.assertScrape(*data)
 
     def test_preservehtml(self):
