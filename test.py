@@ -75,5 +75,19 @@ class TestScrape(unittest.TestCase):
         data = ['', '', {}]
         self.assertScrape(*data)
 
+    def test_mixedcaseattr(self):
+        data = ['<a value="" thisValue="{{ foo }}" />', '<a value="yay" thisvalue="test" />', {'foo': 'test'}]
+        self.assertScrape(*data)
+
+    def test_mixedcaseattr2(self):
+        data = ['<character achpoints="{{ foo }}" />', '<character achPoints="450" classId="6" />', {'foo': '450'}]
+        self.assertScrape(*data)
+
+    def test_mixedcaseattr3(self):
+        data = ['<character ACHPOINTS="{{ foo }}" />', '<character achPoints="450" classId="6" />', {'foo': '450'}]
+        self.assertScrape(*data)
+
+
+
 if __name__ == '__main__':
     unittest.main()
