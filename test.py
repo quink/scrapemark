@@ -87,7 +87,9 @@ class TestScrape(unittest.TestCase):
         data = ['<character ACHPOINTS="{{ foo }}" />', '<character achPoints="450" classId="6" />', {'foo': '450'}]
         self.assertScrape(*data)
 
-
+    def test_emptyattribute(self):
+        data = ['{* <a href="{{ [links].url }}">{{ [links].title }}</a> *}', '<a href="">Some text</a>', {'links' : [{'title' : 'Some text', 'url' : ''}]}]
+        self.assertScrape(*data)
 
 if __name__ == '__main__':
     unittest.main()
