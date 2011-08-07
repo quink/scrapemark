@@ -43,6 +43,10 @@ class TestScrape(unittest.TestCase):
         data = ['<title>{{title}}</title>','<title>YouTube - &#x202a;Most viewed videos&#x202c;&lrm</title>', {'title': u'YouTube - \u202aMost viewed videos\u202c&lrm'}]
         self.assertScrape(*data)
 
+    def test_entitydec(self):
+        data = ['<title>{{title}}</title>','<title>&#0065;</title>', {'title': u'A'}]
+        self.assertScrape(*data)
+
     def test_url(self):
         data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081', 'verbose' : True}]
         self.assertScrape(*data)
@@ -88,7 +92,20 @@ class TestScrape(unittest.TestCase):
         self.assertScrape(*data)
 
     def test_emptyattribute(self):
-        data = ['{* <a href="{{ [links].url }}">{{ [links].title }}</a> *}', '<a href="">Some text</a>', {'links' : [{'title' : 'Some text', 'url' : ''}]}]
+        data = ['{* <a href="{{ [links].url }}">{{ [links].title }}</a> *}',
+            '<a href="">Some text</a>', {'links' : [{'title' : 'Some text', 'url' : ''}]}]
+        self.assertScrape(*data)
+
+    def test_nested(self):
+        data = ['<c>{{ foo }}</c>', '<a><b><c>hello</c></b></a>', {'foo':'hello'}]
+        self.assertScrape(*data)
+
+    def test_adjacent(self):
+        data = ['<a><c /><c>{{ foo }}</c></a>', '<a><c>hello_one</c><c>hello_two</c></a>', {'foo':'hello_two'}]
+        self.assertScrape(*data)
+
+    def test_third(self):
+        data = ['<a><c /><d /><e>{{ foo }}</e></a>', '<a><c></c><d></d><e>hello</e></a>', {'foo':'hello'}]
         self.assertScrape(*data)
 
 if __name__ == '__main__':
