@@ -13,11 +13,8 @@ user_agent='Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.8.1.3) Gecko/20
 def scrape(pattern, html=None, url=None, get=None, post=None, headers=None, cookie_jar=None, verbose=False, \
     user_agent=user_agent, processors={}):
     if type(pattern) == str:
-        pattern = compile(pattern)
+        pattern = _Pattern(_compile(pattern, True))
     return pattern.scrape(html, url, get, post, headers, cookie_jar, verbose, user_agent, processors)
-    
-def compile(pattern):
-    return _Pattern(_compile(pattern, True))
     
 def fetch_html(url, get=None, post=None, headers=None, cookie_jar=None, verbose=False, \
     user_agent=user_agent, processors={}):
@@ -456,7 +453,7 @@ def _remove_html(s):
 def _decode_entities(s):
     if type(s) is not unicode:
         s = unicode(s, 'utf-8', 'ignore')
-        s = unicodedata.normalize('NFKD', s)
+        #s = unicodedata.normalize('NFKD', s)
     return _entity_re.sub(_substitute_entity, s)
     
 def _substitute_entity(m):
