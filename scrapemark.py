@@ -267,7 +267,7 @@ def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, proces
             if not m:
                 return -1
             # run previous special nodes
-            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors):
+            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors, verbose):
                 return -1
             special = []
             i = anchor_i = m.end()
@@ -291,17 +291,23 @@ def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, proces
                 else: # make sure children match
                     body, i = _next_tag(html, i, node[1], node[2])
                     nested_captures = {}
-                    if _match(node[4], body, 0, nested_captures, base_url, cookie_jar) != -1:
+                    if _match(node[4], body, 0, nested_captures, base_url, cookie_jar, verbose, processors) != -1:
+                        if verbose:
+                            print "Captures are before merge:",captures
+                            print "Nested captures are before merge:",nested_captures
                         _merge_captures(captures, nested_captures)
+                        if verbose:
+                            print "Captures are after merge: ",captures
+                            print "Nested captures are after merge: ",nested_captures
                         break
             # run previous special nodes
-            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors):
+            if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors, verbose):
                 return -1
             special = []
             anchor_i = i
         else:
             special.append(node)
-    if not _run_special_nodes(special, html[i:], captures, base_url, cookie_jar, processors):
+    if not _run_special_nodes(special, html[i:], captures, base_url, cookie_jar, processors, verbose):
         return -1
     return i
         
@@ -319,13 +325,13 @@ def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar, processors={
                     return -1
     return True
 
-def _run_special_nodes(nodes, s, captures, base_url, cookie_jar, processors={}): # returns True/False
+def _run_special_nodes(nodes, s, captures, base_url, cookie_jar, processors={}, verbose=False): # returns True/False
     for node in nodes:
-        if not _run_special_node(node, s, captures, base_url, cookie_jar, processors):
+        if not _run_special_node(node, s, captures, base_url, cookie_jar, processors, verbose):
             return False
     return True
         
-def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}): # returns True/False
+def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}, verbose=False): # returns True/False
     if node[0] == _CAPTURE:
         s = _apply_filters(s, node[2], base_url, processors)
         _set_capture(captures, node[1], s)
@@ -333,7 +339,7 @@ def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}): #
         i = 0
         while True:
             nested_captures = {}
-            i = _match(node[1], s, i, nested_captures, base_url, cookie_jar, processors)
+            i = _match(node[1], s, i, nested_captures, base_url, cookie_jar, verbose, processors)
             if i == -1:
                 break
             else:
@@ -343,7 +349,7 @@ def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}): #
     elif node[0] == _GOTO:
         new_url = _apply_filters(s, node[1] + ['abs'], base_url, processors)
         new_html = fetch_html(new_url, cookie_jar=cookie_jar)
-        if _match(node[2], new_html, 0, captures, new_url, cookie_jar, processors) == -1:
+        if _match(node[2], new_html, 0, captures, new_url, cookie_jar, verbose, processors) == -1:
             return False
     return True
     

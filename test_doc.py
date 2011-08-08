@@ -89,15 +89,16 @@ class TestDoc(unittest.TestCase):
         <table>
         <tr />
         {*
-                <tr>
+            <tr>
                 <td>{{ [days].number|int }}</td>
                 {*
-                        <td>{{ [days].[points]|float }}</td>
+                    <td>{{ [days].[points]|float }}</td>
                 *}
-                </tr>
+            </tr>
         *}
         </table>
-        """, str, {'days': [{'number': 1, 'points': [5.6, 24.5]}, \
+        """, str, {'days': [ \
+              {'number': 1, 'points': [5.6, 24.5]}, \
               {'number': 2, 'points': [1.1, 12.8]}, \
               {'number': 3, 'points': [2.4, 5.67]}]},
               {'verbose' : True}]
@@ -108,9 +109,6 @@ class TestDoc(unittest.TestCase):
         <div id='footer'>{{ footer|html }}</div>
         """, str, {'footer': "\n<a href='disclaimer.html'>Disclaimer</a> | <a href='contact.html'>Contact</a>\n"}]
         self.assertScrape(*data)
-
-
-       
 
 if __name__ == '__main__':
     unittest.main()
