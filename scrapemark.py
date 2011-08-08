@@ -252,7 +252,8 @@ def _make_text_re(text, re_compile):
 # functions for running pattern nodes on html
 # ---------------------------------------------------------------
 
-def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, processors={}): # returns substring index after match, -1 if no match
+def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, processors={}): 
+    """Returns substring index after match, -1 if no match"""
     if verbose:
         import pprint
         print "Nodes are: ",
@@ -295,7 +296,7 @@ def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, proces
                         if verbose:
                             print "Captures are before merge:",captures
                             print "Nested captures are before merge:",nested_captures
-                        _merge_captures(captures, nested_captures)
+                        captures = _merge_captures(captures, nested_captures, 0, verbose)
                         if verbose:
                             print "Captures are after merge: ",captures
                             print "Nested captures are after merge: ",nested_captures
@@ -311,7 +312,8 @@ def _match(nodes, html, i, captures, base_url, cookie_jar, verbose=False, proces
         return -1
     return i
         
-def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar, processors={}): # returns True/False, -1 if failed _run_special_node
+def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar, processors={}): 
+    """ returns True/False, -1 if failed _run_special_node"""
     for name, attr_node in attr_nodes.items():
         if name not in attrs:
             return False
@@ -325,16 +327,18 @@ def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar, processors={
                     return -1
     return True
 
-def _run_special_nodes(nodes, s, captures, base_url, cookie_jar, processors={}, verbose=False): # returns True/False
+def _run_special_nodes(nodes, s, captures, base_url, cookie_jar, processors={}, verbose=False):
+    """Returns True/False"""
     for node in nodes:
         if not _run_special_node(node, s, captures, base_url, cookie_jar, processors, verbose):
             return False
     return True
         
-def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}, verbose=False): # returns True/False
+def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}, verbose=False):
+    """Returns True/False"""
     if node[0] == _CAPTURE:
         s = _apply_filters(s, node[2], base_url, processors)
-        _set_capture(captures, node[1], s)
+        captures = _set_capture(captures, node[1], s)
     elif node[0] == _SCAN:
         i = 0
         while True:
@@ -343,9 +347,11 @@ def _run_special_node(node, s, captures, base_url, cookie_jar, processors={}, ve
             if i == -1:
                 break
             else:
-                _merge_captures(captures, nested_captures)
+                captures = _merge_captures(captures, nested_captures)
         # scan always ends with an usuccessful match, so fill in captures that weren't set
         _fill_captures(node[1], captures, processors)
+        if verbose:
+            print 'Running a scan on: ', s, "starting from", i, "capturing:", captures
     elif node[0] == _GOTO:
         new_url = _apply_filters(s, node[1] + ['abs'], base_url, processors)
         new_html = fetch_html(new_url, cookie_jar=cookie_jar)
@@ -384,14 +390,18 @@ def _set_capture(captures, name_parts, val, list_append=True):
             else:
                 new_obj = obj[part]
         obj = new_obj
+    return captures
         
-def _merge_captures(master, slave):
+def _merge_captures(master, slave, level=0, verbose=False):
+    if verbose:
+        print "  " * level, "Master:", master
+        print "  " * level, "Slave:", slave
     for name, val in slave.items():
         if name not in master:
             master[name] = val
         else:
-            if type(val) == dict and type(master[name]) == dict:
-                _merge_captures(master[name], val)
+            if type(val[0]) == dict and type(master[name]) == dict:
+                master = _merge_captures(master[name], val, level+1, verbose)
             elif type(val) == list and type(master[name]) == list:
                 for e in val:
                     if type(e) == dict:
@@ -402,6 +412,10 @@ def _merge_captures(master, slave):
                                 master[name][-1][n] = v
                     else:
                         master[name].append(e)
+    if verbose:
+        print "  " * level, "Out:", master
+        print
+    return master
         
 def _fill_captures(nodes, captures, processors={}):
     for node in nodes:
@@ -415,7 +429,7 @@ def _fill_captures(nodes, captures, processors={}):
             _fill_captures(node[1], captures, processors)
         elif node[0] == _GOTO:
             _fill_captures(node[2], captures, processors)
-        
+    
 def _apply_filters(s, filters, base_url, processors={}):
     if 'html' not in filters and issubclass(type(s), basestring):
         s = _remove_html(s)
@@ -487,7 +501,8 @@ def _parse_attrs(s):
         attrs[m.group(1).lower()] = value
     return attrs
     
-def _next_tag(s, i, tag_open_re, tag_close_re, depth=1): # returns (tag body, substring index after tag)
+def _next_tag(s, i, tag_open_re, tag_close_re, depth=1):
+    """Returns (tag body, substring index after tag)"""
     slen = len(s)
     start = i
     while i < slen:
@@ -507,7 +522,8 @@ def _next_tag(s, i, tag_open_re, tag_close_re, depth=1): # returns (tag body, su
             i = tag_open.end()
     return s[start:i], i
 
-def _next_closure(s, i, left_str, right_str, depth=1): # returns (closure body, substring index after closure)
+def _next_closure(s, i, left_str, right_str, depth=1):
+    """Returns (closure body, substring index after closure)"""
     slen = len(s)
     start = i
     while i < slen:
