@@ -28,7 +28,7 @@ class TestScrape(unittest.TestCase):
         return string + "a"
 
     def test_adda(self):
-        data = ['{{ foo|adda }}', '<a>hello</a>', {'foo':'helloa'}, {'processors':{'adda':self.adda}, 'verbose':True}]
+        data = ['{{ foo|adda }}', '<a>hello</a>', {'foo':'helloa'}, {'processors':{'adda':self.adda}}]
         self.assertScrape(*data)
 
     def test_comments(self):
@@ -48,7 +48,7 @@ class TestScrape(unittest.TestCase):
         self.assertScrape(*data)
 
     def test_url(self):
-        data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081', 'verbose' : True}]
+        data = ['{{ foo }}', None, {'foo' : 'hello'}, {'url':'http://localhost:8081'}]
         self.assertScrape(*data)
 
     def test_get(self):
