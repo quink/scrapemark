@@ -100,6 +100,15 @@ class TestScrape(unittest.TestCase):
         data = ['<c>{{ foo }}</c>', '<a><b><c>hello</c></b></a>', {'foo':'hello'}]
         self.assertScrape(*data)
 
+    def test_nested2(self):
+        data = ["""{*<tr><td>{{ [group].flat }}</td>{*<td>{{ [group].[list] }}</td>*}{*<em> {{ [group].emph }}</em>*}</tr>*}""",
+            """<tr><td>head</td><td>data1</td><td>data2</td><em>emphdata1</em></tr>
+            <tr><td>head-2</td><td>data1-2</td><td>data2-2</td><em>emphdata-2</em></tr>""",
+            {'group': [
+                {'flat': u'head', 'list': [u'data1', u'data2'], 'emph': u'emphdata1'},
+                {'flat': u'head-2', 'list': [u'data1-2', u'data2-2'], 'emph': u'emphdata-2'}]}]
+        self.assertScrape(*data)
+
     def test_adjacent(self):
         data = ['<a><c /><c>{{ foo }}</c></a>', '<a><c>hello_one</c><c>hello_two</c></a>', {'foo':'hello_two'}]
         self.assertScrape(*data)
