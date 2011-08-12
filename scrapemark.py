@@ -456,13 +456,13 @@ def _merge_captures(master, slave, level, nodelevel):
     #print 'new_master', master
     return master
         
-def _fill_captures(nodes, captures, processors={}):
+def _fill_captures(nodes, captures, processors):
     for node in nodes:
         if node[0] == _TAG:
-            _fill_captures(node[5], captures)
+            _fill_captures(node[5], captures, processors)
             for attr in node[4].values():
                 for special_nodes in attr[1]:
-                    _fill_captures(special_nodes, captures)
+                    _fill_captures(special_nodes, captures, processors)
         elif node[0] == _CAPTURE:
             _set_capture(captures, node[1], _apply_filters(None, node[2], None, processors), False)
         elif node[0] == _SCAN:
@@ -470,7 +470,7 @@ def _fill_captures(nodes, captures, processors={}):
         elif node[0] == _GOTO:
             _fill_captures(node[2], captures, processors)
         
-def _apply_filters(s, filters, base_url, processors={}):
+def _apply_filters(s, filters, base_url, processors):
     if 'html' not in filters and issubclass(type(s), basestring):
         s = _remove_html(s)
     for f in filters:
@@ -493,7 +493,13 @@ def _apply_filters(s, filters, base_url, processors={}):
         elif f == 'bool':
             s = bool(s)
         elif f != 'html':
-            s = processors[f](s)
+            if processors[f][1]:
+                try:
+                    s = processors[f][0](s)
+                except:
+                    s = s
+            else:
+                s = processors[f][0](s)
     return s
     
     
