@@ -62,13 +62,14 @@ class _Pattern:
 
 # node types     # information in tuple
 _TEXT = 1        # (_TEXT, regex)
-_TAG = 2         # (_TAG, open_regex, close_regex, attributes, children)   attributes {name: (regex, special_nodes) ...}
+_TAG = 2         # (_TAG, open_regex, close_regex, skip, attributes, children)   attributes {name: (regex, [[special_nodes]]) ...}
 _CAPTURE = 3     # (_CAPTURE, name_parts, filters)
 _SCAN = 4        # (_SCAN, children)
 _GOTO = 5        # (_GOTO, filters, children)
 
 _space_re = re.compile(r'\s+')
 _tag_re = re.compile(r'<[^>]*>')
+_tag_skip_re = re.compile(r'\((.*)\)$')
 _attr_re = re.compile(r'([\w-]+)(?:\s*=\s*(?:(["\'])(.*?)\2|(\S+)))?', re.S)
 _attr_start_re = re.compile(r'([\w-]+)(?:\s*=\s*)?')
 _comment_re = re.compile(r'<!--.*?-->', re.S)
@@ -109,15 +110,17 @@ def _compile(s, re_compile):
                 elif inner[-1] == '/':
                     l = inner[:-1].split(None, 1)
                     name = l[0].strip()
+                    name, skip = _tag_skip(name)
                     attrs = {} if len(l) == 1 else _compile_attrs(l[1], re_compile)
-                    nodes.append((_TAG, _make_start_tag_re(name, re_compile), _make_end_tag_re(name, re_compile), attrs, []))
+                    nodes.append((_TAG, _make_start_tag_re(name, re_compile), _make_end_tag_re(name, re_compile), skip, attrs, []))
                 # start tag
                 else:
                     l = inner.split(None, 1)
                     name = l[0].strip()
+                    name, skip = _tag_skip(name)
                     attrs = {} if len(l) == 1 else _compile_attrs(l[1], re_compile)
                     new_nodes = []
-                    nodes.append((_TAG, _make_start_tag_re(name, re_compile), _make_end_tag_re(name, re_compile), attrs, new_nodes))
+                    nodes.append((_TAG, _make_start_tag_re(name, re_compile), _make_end_tag_re(name, re_compile), skip, attrs, new_nodes))
                     stack.append(nodes)
                     nodes = new_nodes
         # special brackets
@@ -209,13 +212,19 @@ def _compile_attrs(s, re_compile):
         special_nodes = []
         if val: # if there is no value, empty regex string won't be compiled
             nodes = _compile(val, False)
+            prev_special = False
             # concatenate regexes
             for node in nodes:
                 if node[0] == _TEXT:
                     regex += node[1]
+                    prev_special = False
                 elif node[0] != _TAG:
-                    regex += '(.*)'
-                    special_nodes.append(node)
+                    if prev_special:
+                        special_nodes[-1].append(node)
+                    else:
+                        regex += '(.*)'
+                        special_nodes.append([node])
+                        prev_special = True
             if regex != '(.*)':
                 regex = '(?:^|\s)' + regex + '(?:\s|$)' # match must be flush with whitespace or start/end
             if re_compile:
@@ -223,8 +232,18 @@ def _compile_attrs(s, re_compile):
         attrs[name] = (regex, special_nodes)
     return attrs
     
+def _tag_skip(name):
+    match = _tag_skip_re.search(name)
+    if match:
+        try:
+            val = match.group(1)
+            return name[:match.start()], -1 if val == 'last' else int(val)
+        except ValueError:
+            return name[:match.start()], 0
+    return name, 0
+    
 def _make_start_tag_re(name, re_compile):
-    regex = r'<\s*' + re.escape(name) + r'(?:\s+([^>]*)|(\s*\/))?>'
+    regex = r'<\s*' + re.escape(name) + r'(?:\s+([^>]*?)|\s*)(/)?>'
     if re_compile:
         regex = re.compile(regex, re.I)
     return regex
@@ -262,26 +281,48 @@ def _match(nodes, html, i, captures, base_url, cookie_jar, processors, level, no
             i = anchor_i = m.end()
         # match html tag
         elif node[0] == _TAG:
+            if node[3] < 0:
+                # backwards from last tag
+                starts = []
+                while True:
+                    m = node[1].search(html, i)
+                    if not m:
+                        break
+                    starts.append(m.start())
+                    i = m.end()
+                    if not m.group(2): # not standalone
+                        body, i = _next_tag(html, i, node[1], node[2])
+                i = starts[max(node[3], -len(starts))] # todo::::::::::::::::should throw -1 if not enough
+            else:
+                # skip forward
+                for skip in range(node[3]):
+                    m = node[1].search(html, i)
+                    if not m:
+                        return -1
+                    i = m.end()
+                    if not m.group(2): # not standalone
+                        body, i = _next_tag(html, i, node[1], node[2])
             while True:
                 # cycle through tags until all attributes match
                 while True:
+                    nested_captures = {}
                     m = node[1].search(html, i)
                     if not m:
                         return -1
                     i = m.end()
                     attrs = _parse_attrs(m.group(1) or '')
-                    attrs_matched = _match_attrs(node[3], attrs, captures, base_url, cookie_jar, processors, level+1, nodelevel)
+                    attrs_matched = _match_attrs(node[4], attrs, nested_captures, base_url, cookie_jar, processors, level+1, nodelevel)
                     if attrs_matched == -1:
                         return -1
                     if attrs_matched:
                         break
                 if m.group(2): # standalone tag
+                    _merge_captures(captures, nested_captures, level, nodelevel)
                     break
                 else: # make sure children match
                     body, i = _next_tag(html, i, node[1], node[2])
-                    nested_captures = {}
-                    if _match(node[4], body, 0, nested_captures, base_url, cookie_jar, processors, level+1, nodelevel) != -1:
-                        captures = _merge_captures(captures, nested_captures, level, nodelevel)
+                    if _match(node[5], body, 0, nested_captures, base_url, cookie_jar, processors, level+1, nodelevel) != -1:
+                        _merge_captures(captures, nested_captures, level+1, nodelevel)
                         break
             # run previous special nodes
             if not _run_special_nodes(special, html[anchor_i:m.start()], captures, base_url, cookie_jar, processors, level, nodelevel):
@@ -304,9 +345,10 @@ def _match_attrs(attr_nodes, attrs, captures, base_url, cookie_jar, processors, 
             if not m:
                 return False
             # run regex captures over parallel list of special nodes
-            for i, special_node in enumerate(attr_node[1]):
-                if not _run_special_node(special_node, m.group(i+1), captures, base_url, cookie_jar, processors, level, nodelevel):
-                    return -1
+            for i, special_nodes in enumerate(attr_node[1]):
+                for n in special_nodes:
+                    if not _run_special_node(n, m.group(i+1), captures, base_url, cookie_jar, processors, level, nodelevel):
+                        return -1
     return True
 
 def _run_special_nodes(nodes, s, captures, base_url, cookie_jar, processors, level, nodelevel):
@@ -320,7 +362,7 @@ def _run_special_node(node, s, captures, base_url, cookie_jar, processors, level
     """Returns True/False"""
     if node[0] == _CAPTURE:
         s = _apply_filters(s, node[2], base_url, processors)
-        captures = _set_capture(captures, node[1], s)
+        _set_capture(captures, node[1], s)
     elif node[0] == _SCAN:
         i = 0
         while True:
@@ -340,11 +382,14 @@ def _run_special_node(node, s, captures, base_url, cookie_jar, processors, level
             if i == -1:
                 break
             else:
-                captures = _merge_captures(captures, nested_captures, level, nodelevel)
+                _merge_captures(captures, nested_captures, level, nodelevel)
         # scan always ends with an usuccessful match, so fill in captures that weren't set
         _fill_captures(node[1], captures, processors)
     elif node[0] == _GOTO:
-        new_url = _apply_filters(s, node[1] + ['abs'], base_url, processors)
+        s = s.strip()
+        if not s:
+            return False
+        new_url = _apply_filters(s, node[1] + ['abs'], base_url)
         new_html = fetch_html(new_url, cookie_jar=cookie_jar)
         if _match(node[2], new_html, 0, captures, new_url, cookie_jar, processors, level, nodelevel) == -1:
             return False
@@ -381,7 +426,6 @@ def _set_capture(captures, name_parts, val, list_append=True):
             else:
                 new_obj = obj[part]
         obj = new_obj
-    return captures
         
 def _merge_captures(master, slave, level, nodelevel):
     #import traceback
@@ -396,7 +440,7 @@ def _merge_captures(master, slave, level, nodelevel):
             master[name] = val
         else:
             if type(val) == dict and type(master[name]) == dict:
-                master = _merge_captures(master[name], val, level)
+                _merge_captures(master[name], val)
             elif type(val) == list and type(master[name]) == list:
                 for e in range(0,len(val)):
                     if type(val[e]) == dict and mergeback:
@@ -415,16 +459,17 @@ def _merge_captures(master, slave, level, nodelevel):
 def _fill_captures(nodes, captures, processors={}):
     for node in nodes:
         if node[0] == _TAG:
-            _fill_captures(node[4], captures, processors)
-            for attr in node[3].values():
-                _fill_captures(attr[1], captures, processors)
+            _fill_captures(node[5], captures)
+            for attr in node[4].values():
+                for special_nodes in attr[1]:
+                    _fill_captures(special_nodes, captures)
         elif node[0] == _CAPTURE:
             _set_capture(captures, node[1], _apply_filters(None, node[2], None, processors), False)
         elif node[0] == _SCAN:
             _fill_captures(node[1], captures, processors)
         elif node[0] == _GOTO:
             _fill_captures(node[2], captures, processors)
-    
+        
 def _apply_filters(s, filters, base_url, processors={}):
     if 'html' not in filters and issubclass(type(s), basestring):
         s = _remove_html(s)
