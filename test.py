@@ -120,7 +120,7 @@ class TestScrape(unittest.TestCase):
     def test_attributeadj(self):
         data = ["""{*<meta content="{{ token }}" http-equiv="refresh"/>*}""", """
             <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
-            <meta http-equiv="refresh" content="other-text"/>""", {}]
+            <meta http-equiv="refresh" content="other-text"/>""", {'token' : 'other-text'}]
         self.assertScrape(*data)
 
 if __name__ == '__main__':
